@@ -17,13 +17,15 @@ import (
 var organisation string
 var clientID string
 var clientSecret string
+var targetURI string
 
 func main() {
 	organisation = os.Getenv("ORGANISATION")
 	clientID = os.Getenv("CLIENT_ID")
 	clientSecret = os.Getenv("CLIENT_SECRET")
+	targetURI = os.Getenv("TARGET_URI")
 
-	target, _ := url.Parse("http://localhost:9200")
+	target, _ := url.Parse(targetURI)
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	http.HandleFunc("/", handler(proxy))
 	err := http.ListenAndServe(":9999", nil)
