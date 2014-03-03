@@ -47,23 +47,17 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 				http.Error(w, "Error authorizing with github", 500)
 				return
 			}
-			userOrganisations, err := getOrganisations(accessToken)
-			if err != nil {
-				http.Error(w, "Error listing user organisations", 500)
+			if isUserInOrganisation(accessToken) {
+				token := randomLoginID()
+				logins[token] = true
+				http.SetCookie(w, &http.Cookie{Name: cookieName("token"), Value: token})
+				redirectURI, _ := r.Cookie(cookieName("redirect_uri"))
+				http.Redirect(w, r, redirectURI.Value, 302)
+				return
+			} else {
+				http.Error(w, "You are not in this organisation", 500)
 				return
 			}
-			for _, o := range userOrganisations {
-				if o == organisation {
-					token := randomLoginID()
-					logins[token] = true
-					http.SetCookie(w, &http.Cookie{Name: cookieName("token"), Value: token})
-					redirectURI, _ := r.Cookie(cookieName("redirect_uri"))
-					http.Redirect(w, r, redirectURI.Value, 302)
-					return
-				}
-			}
-			http.Error(w, "You are not in this organisation", 500)
-			return
 		}
 		if authenticated(r) == false {
 			http.SetCookie(w, &http.Cookie{Name: cookieName("redirect_uri"), Value: r.URL.String()})
@@ -126,21 +120,14 @@ func getAccessToken(code string) (string, error) {
 	return "", errors.New("Error retrieving access token")
 }
 
-func getOrganisations(accessToken string) ([]string, error) {
-	response, err := http.Get("https://api.github.com/user/orgs?access_token=" + accessToken)
+func isUserInOrganisation(accessToken string) bool {
+	url := "https://api.github.com/orgs/" + organisation + "?access_token=" + accessToken
+	response, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return false
 	}
-
-	var organisations []string
-
-	defer response.Body.Close()
-	b, _ := ioutil.ReadAll(response.Body)
-	var userOrganisations []map[string]string
-	json.Unmarshal(b, &userOrganisations)
-	for _, userOrganisation := range userOrganisations {
-		organisations = append(organisations, userOrganisation["login"])
+	if response.StatusCode == 200 {
+		return true
 	}
-
-	return organisations, nil
+	return false
 }
