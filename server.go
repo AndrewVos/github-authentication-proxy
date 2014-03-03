@@ -52,7 +52,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 				if o == organisation {
 					token := randomLoginID()
 					logins[token] = true
-					http.SetCookie(w, &http.Cookie{Name: "token", Value: token})
+					http.SetCookie(w, &http.Cookie{Name: tokenKey(), Value: token})
 					fmt.Fprintf(w, "Logged In\n")
 					return
 				}
@@ -68,6 +68,11 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
+func tokenKey() string {
+	hostName, _ := os.Hostname()
+	return "token_" + hostName
+}
+
 func randomLoginID() string {
 	b := make([]byte, 50)
 	rand.Read(b)
@@ -79,7 +84,7 @@ func randomLoginID() string {
 }
 
 func authenticated(r *http.Request) bool {
-	cookie, err := r.Cookie("token")
+	cookie, err := r.Cookie(tokenKey())
 	if err != nil {
 		return false
 	}
