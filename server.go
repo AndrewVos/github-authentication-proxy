@@ -67,7 +67,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 		}
 		if authenticated(r) == false {
 			http.SetCookie(w, &http.Cookie{Name: cookieName("redirect_uri"), Value: r.URL.String()})
-			http.Redirect(w, r, "https://github.com/login/oauth/authorize?scope=repo,user,user:email&client_id="+clientID, 302)
+			http.Redirect(w, r, "https://github.com/login/oauth/authorize?scope=read:org&client_id="+clientID, 302)
 			return
 		}
 		p.ServeHTTP(w, r)
