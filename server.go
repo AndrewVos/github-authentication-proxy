@@ -40,7 +40,7 @@ var logins = map[string]bool{}
 
 func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/favicon.ico" && r.URL.Path == "/_callback" {
+		if r.URL.Path == "/_callback" {
 			code := r.URL.Query().Get("code")
 			accessToken, err := getAccessToken(code)
 			if err != nil || accessToken == "" {
@@ -50,8 +50,8 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 			if isUserInOrganisation(accessToken) {
 				token := randomLoginID()
 				logins[token] = true
-				http.SetCookie(w, &http.Cookie{Name: cookieName("token"), Value: token})
-				redirectURI, _ := r.Cookie(cookieName("redirect_uri"))
+				http.SetCookie(w, &http.Cookie{Name: "token", Value: token})
+				redirectURI, _ := r.Cookie("redirect_uri")
 				http.Redirect(w, r, redirectURI.Value, 302)
 				return
 			} else {
@@ -59,8 +59,8 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 				return
 			}
 		}
-		if authenticated(r) == false {
-			http.SetCookie(w, &http.Cookie{Name: cookieName("redirect_uri"), Value: r.URL.String()})
+		if r.URL.Path != "/favicon.ico" && !authenticated(r) {
+			http.SetCookie(w, &http.Cookie{Name: "redirect_uri", Value: r.URL.String()})
 			http.Redirect(w, r, "https://github.com/login/oauth/authorize?scope=read:org&client_id="+clientID, 302)
 			return
 		}
