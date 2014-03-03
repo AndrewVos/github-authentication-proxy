@@ -2,16 +2,15 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"github.com/dchest/authcookie"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"time"
 )
 
 var port string
@@ -19,6 +18,7 @@ var targetURI string
 var organisation string
 var clientID string
 var clientSecret string
+var cookieSecret []byte
 
 func main() {
 	port = os.Getenv("PORT")
@@ -26,6 +26,7 @@ func main() {
 	organisation = os.Getenv("ORGANISATION")
 	clientID = os.Getenv("CLIENT_ID")
 	clientSecret = os.Getenv("CLIENT_SECRET")
+	cookieSecret = []byte(os.Getenv("COOKIE_SECRET"))
 
 	target, _ := url.Parse(targetURI)
 	proxy := httputil.NewSingleHostReverseProxy(target)
@@ -35,8 +36,6 @@ func main() {
 		panic(err)
 	}
 }
-
-var logins = map[string]bool{}
 
 func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -48,9 +47,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 				return
 			}
 			if isUserInOrganisation(accessToken) {
-				token := randomLoginID()
-				logins[token] = true
-				http.SetCookie(w, &http.Cookie{Name: "token", Value: token})
+				login(w, r)
 				redirectURI, _ := r.Cookie("redirect_uri")
 				http.Redirect(w, r, redirectURI.Value, 302)
 				return
@@ -68,27 +65,17 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-func cookieName(name string) string {
-	hostName, _ := os.Hostname()
-	return name + "_" + hostName
-}
-
-func randomLoginID() string {
-	b := make([]byte, 50)
-	rand.Read(b)
-	encoder := base64.URLEncoding
-	token := make([]byte, encoder.EncodedLen(len(b)))
-	encoder.Encode(token, b)
-	t := fmt.Sprintf("%s", token)
-	return t
+func login(w http.ResponseWriter, r *http.Request) {
+	cookie := authcookie.NewSinceNow(organisation, 24*time.Hour, cookieSecret)
+	http.SetCookie(w, &http.Cookie{Name: "token", Value: cookie})
 }
 
 func authenticated(r *http.Request) bool {
-	cookie, err := r.Cookie(cookieName("token"))
+	cookie, err := r.Cookie("token")
 	if err != nil {
 		return false
 	}
-	return logins[cookie.Value] == true
+	return authcookie.Login(cookie.Value, cookieSecret) == organisation
 }
 
 func getAccessToken(code string) (string, error) {

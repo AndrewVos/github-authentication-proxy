@@ -11,4 +11,5 @@ ENV PATH $PATH:$GOPATH/bin:/usr/local/go/bin
 
 ADD . /gopath/src/github.com/AndrewVos/github-authentication-proxy
 WORKDIR /gopath/src/github.com/AndrewVos/github-authentication-proxy
+RUN go get
 RUN go build
