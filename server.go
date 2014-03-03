@@ -52,8 +52,9 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 				if o == organisation {
 					token := randomLoginID()
 					logins[token] = true
-					http.SetCookie(w, &http.Cookie{Name: tokenKey(), Value: token})
-					fmt.Fprintf(w, "Logged In\n")
+					http.SetCookie(w, &http.Cookie{Name: cookieName("token"), Value: token})
+					redirectURI, _ := r.Cookie(cookieName("redirect_uri"))
+					http.Redirect(w, r, redirectURI.Value, 302)
 					return
 				}
 			}
@@ -61,6 +62,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 		if authenticated(r) == false {
+			http.SetCookie(w, &http.Cookie{Name: cookieName("redirect_uri"), Value: r.URL.String()})
 			http.Redirect(w, r, "https://github.com/login/oauth/authorize?scope=repo,user,user:email&client_id="+clientID, 302)
 			return
 		}
@@ -68,9 +70,9 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-func tokenKey() string {
+func cookieName(name string) string {
 	hostName, _ := os.Hostname()
-	return "token_" + hostName
+	return name + "_" + hostName
 }
 
 func randomLoginID() string {
@@ -84,7 +86,7 @@ func randomLoginID() string {
 }
 
 func authenticated(r *http.Request) bool {
-	cookie, err := r.Cookie(tokenKey())
+	cookie, err := r.Cookie(cookieName("token"))
 	if err != nil {
 		return false
 	}
