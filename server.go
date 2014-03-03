@@ -49,7 +49,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 			}
 			userOrganisations, err := getOrganisations(accessToken)
 			if err != nil {
-				http.Error(w, "Error authorizing with github", 500)
+				http.Error(w, "Error listing user organisations", 500)
 				return
 			}
 			for _, o := range userOrganisations {
