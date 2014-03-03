@@ -53,6 +53,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 					token := randomLoginID()
 					logins[token] = true
 					http.SetCookie(w, &http.Cookie{Name: "token", Value: token})
+					fmt.Fprintf(w, "Logged In\n")
 					return
 				}
 			}
@@ -60,7 +61,7 @@ func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) 
 			return
 		}
 		if authenticated(r) == false {
-			http.Redirect(w, r, "https://github.com/login/oauth/authorize?client_id="+clientID, 302)
+			http.Redirect(w, r, "https://github.com/login/oauth/authorize?scope=repo,user,user:email&client_id="+clientID, 302)
 			return
 		}
 		p.ServeHTTP(w, r)
