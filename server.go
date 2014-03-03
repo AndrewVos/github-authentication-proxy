@@ -40,7 +40,7 @@ var logins = map[string]bool{}
 
 func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/_callback" {
+		if r.URL.Path != "/favicon.ico" && r.URL.Path == "/_callback" {
 			code := r.URL.Query().Get("code")
 			accessToken, err := getAccessToken(code)
 			if err != nil || accessToken == "" {
